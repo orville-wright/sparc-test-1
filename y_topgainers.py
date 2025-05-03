@@ -122,11 +122,11 @@ class y_topgainers:
                 r.html = HTML(html=r.text, url=r.url)
                 logging.warning(f"%s     - FALLBACK to basic HTML mode mode" % cmi_debug)
         else:
-            logging.warning(f"%s  - JS engine: {js_render} using basic HTML mode" % cmi_debug)
+            logging.info(f"%s  - JS engine: {js_render} using basic HTML mode" % cmi_debug)
             #html = HTML(html=r.text, url=r.url)
             #r.html = html
 
-            print (f"{r.html}" )
+            #print (f"{r.html}" )
         
         # Try to find tbody using CSS selector
         logging.info(f"%s     - requests-html CSS Selector processing..." % cmi_debug)
