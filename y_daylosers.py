@@ -188,15 +188,17 @@ class y_daylosers:
         """
 
         cmi_debug = __name__+"::"+self.build_tl_df0.__name__+".#"+str(self.yti)
-        logging.info('%s - IN' % cmi_debug )
+        logging.info('%s     - IN' % cmi_debug )
         time_now = time.strftime("%H:%M:%S", time.localtime() )
-        logging.info('%s - Create clean NULL DataFrame' % cmi_debug )
+        logging.info('%s     - Create clean NULL DataFrame' % cmi_debug )
         self.tl_df0 = pd.DataFrame()             # new df, but is NULLed
         x = 0
-        self.rows_extr = int( len(self.tag_tbody.find_all('tr')) )
 
+        # Update row count calculation for requests-html
+        self.rows_extr = int(len(self.tag_tbody.find('tr')))
+        self.rows_tr_rows = int(len(self.tr_rows))
+        
         for datarow in self.tr_rows:
-
             """
             # >>>DEBUG<< for whedatarow.stripped_stringsn yahoo.com changes data model...
             y = 1
@@ -214,126 +216,204 @@ class y_daylosers:
             print ( f"===================== Debug =========================" )
             # >>>DEBUG<< for when yahoo.com changes data model...
             """
-
-            # Data Extractor Generator
-            def extr_gen():
-                for i in datarow.find_all("td"):
-                    if i.canvas is not None:
-                        yield ( f"canvas" )
+            try:
+                # GENERATOR : Data Extractor that works with both requests-html and BeautifulSoup
+                def extr_gen():
+                    if hasattr(self, 'using_bs4') and self.using_bs4:
+                        # BeautifulSoup version
+                        for i in datarow.find_all("td"):
+                            if i.canvas is not None:
+                                yield ("canvas")
+                            else:
+                                yield (f"{next(i.stripped_strings)}")
                     else:
-                        yield ( f"{next(i.stripped_strings)}" )
+                        # requests-html version
+                        for i in datarow.find("td"):
+                            if i.find('canvas', first=True):
+                                yield ("canvas")
+                            else:
+                                # Get text content - requests-html equivalent of stripped_strings
+                                text = i.text.strip() if i.text else ""
+                                
+                                # Handle multi-line text content (common in newer Yahoo Finance format)
+                                if '\n' in text:
+                                    # Split by newline and take the first line (usually the main value)
+                                    lines = text.split('\n')
+                                    logging.info(f"{cmi_debug} GEN - Multi-line text detected: {text}")
+                                    
+                                    # For price, take the first line
+                                    if len(lines) > 0 and all(c.isdigit() or c in '.-,' for c in lines[0].replace(',', '')):
+                                        yield lines[0].strip()
+                                    # For change values with +/- signs
+                                    elif len(lines) > 1 and ('+' in lines[1] or '-' in lines[1]):
+                                        yield lines[1].strip()
+                                    # For percentage values with % sign
+                                    elif len(lines) > 2 and '%' in lines[2]:
+                                        yield lines[2].strip().strip('()')
+                                    else:
+                                        # Default to first line if we can't determine the format
+                                        yield lines[0].strip()
+                                else:
+                                    yield text
 
-            ################################ 1 ####################################
-            extr_strs = extr_gen()
-            co_sym = next(extr_strs)             # 1 : ticker symbol info / e.g "NWAU"
-            co_name = next(extr_strs)            # 2 : company name / e.g "Consumer Automotive Finance, Inc."
-            mini_chart = next(extr_strs)         # 3 : embeded mini GFX chart
-            price = next(extr_strs)              # 3 : price (Intraday) / e.g "0.0031"
+                try:
+                    ################################ 1 ####################################
+                    extr_strs = extr_gen()
+                    co_sym = next(extr_strs)             # 1 : ticker symbol info / e.g "NWAU"
+                    co_name = next(extr_strs)            # 2 : company name / e.g "Consumer Automotive Finance, Inc."
+                    mini_chart = next(extr_strs)         # 3 : embeded mini GFX chart
+                    price = next(extr_strs)              # 3 : price (Intraday) / e.g "0.0031"
+                    
+                    logging.info(f"{cmi_debug} : Symbol: {co_sym}, Price: {price}")
 
-            ################################ 2 ####################################
+                    ################################ 2 ####################################
+                    # Handle change value
+                    change_sign = next(extr_strs)        # 4 : test for dedicated column for +/- indicator
+                    logging.info(f"{cmi_debug} : {co_sym} : Check $ CHANGE dedicated [+-] field...")
+                    
+                    # Clean up change value
+                    change_val = change_sign
+                    if change_val.startswith('+') or change_val.startswith('-'):
+                        logging.info(f"{cmi_debug} : $ CHANGE: {change_val} [+-], stripping...")
+                        change_cl = re.sub(r'[\+\-]', "", change_val)       # remove +/- sign
+                        logging.info(f"{cmi_debug} : $ CHANGE cleaned to: {change_cl}")
+                    else:
+                        logging.info(f"{cmi_debug} : {change_val} : $ CHANGE is NOT signed [+-]")
+                        change_cl = re.sub(r'[\,]', "", change_val)       # remove commas
+                        logging.info(f"{cmi_debug} : $ CHANGE: {change_cl}")
+                    
+                    # Handle percentage value
+                    pct_sign = next(extr_strs)              # 5 : test for dedicated column for +/- indicator
+                    logging.info(f"{cmi_debug} : {co_sym} : Check % CHANGE dedicated [+-] field...")
+                    
+                    # Clean up percentage value
+                    pct_val = pct_sign
+                    if '%' in pct_val:
+                        # Remove parentheses if present
+                        pct_val = pct_val.strip('()')
+                        
+                    if (re.search(r'\+', pct_val)) or (re.search(r'\-', pct_val)) is not None:
+                        logging.info(f"{cmi_debug} : % CHANGE {pct_val} [+-], stripping...")
+                        pct_cl = re.sub(r'[\+\-\%]', "", pct_val)       # remove +/-/% signs
+                        logging.info(f"{cmi_debug} : % CHANGE cleaned to: {pct_cl}")
+                    else:
+                        logging.info(f"{cmi_debug} : {pct_val} : % CHANGE is NOT signed [+-]")
+                        pct_cl = re.sub(r'[\,\%]', "", pct_val)       # remove commas and % sign
+                        logging.info(f"{cmi_debug} : % CHANGE: {pct_cl}")
+ 
+                    ################################ 3 ####################################
+                    try:
+                        vol = next(extr_strs)            # 6 : volume with scale indicator/ e.g "70.250k"
+                        avg_vol = next(extr_strs)        # 7 : Avg. vol over 3 months) / e.g "61,447"
+                        mktcap = next(extr_strs)         # 8 : Market cap with scale indicator / e.g "15.753B"
+                        peratio = next(extr_strs)        # 9 : PE ratio TTM (Trailing 12 months) / e.g "N/A"
+                    except StopIteration:
+                        # Handle case where some columns might be missing
+                        logging.warning(f"{cmi_debug} : Not all expected columns found, using defaults for missing values")
+                        vol = "0"
+                        avg_vol = "0"
+                        mktcap = "0"
+                        peratio = "N/A"
 
-            change_sign = next(extr_strs)        # 4 : test for dedicated column for +/- indicator
-            logging.info( f"{cmi_debug} : {co_sym} : Check dedicated [+-] field for $ CHANGE" )
-            if change_sign == "+" or change_sign == "-":    # 4 : is $ change sign [+/-] a dedciated field
-                change_val = next(extr_strs)                # 4 : Yes, advance iterator to next field (ignore dedciated sign field)
-            else:
-                change_val = change_sign                    # 4 : get $ change, but its possibly +/- signed
-                if (re.search(r'\+', change_val)) or (re.search(r'\-', change_val)) is not None:
-                    logging.info( f"{cmi_debug} : {change_val} : $ CHANGE is signed [+-], stripping..." )
-                    change_cl = re.sub(r'[\+\-]', "", change_val)       # remove +/- sign
-                    logging.info( f"%s : $ CHANGE +/- cleaned : {change_cl}" % cmi_debug )
-                else:
-                    logging.info( f"{cmi_debug} : {change_val} : $ CHANGE is NOT signed [+-]" )
-                    change_cl = re.sub(r'[\,]', "", change_val)       # remove
-                    logging.info( f"%s : $ CHANGE , cleaned : {change_cl}" % cmi_debug )
+                    ################################ 4 ####################################
+                    # now wrangle the data...
+                    co_sym_lj = f"{co_sym:<6}"                                   # left justify TXT in DF & convert to raw string
+                    co_name_lj = np.array2string(np.char.ljust(co_name, 60) )    # left justify TXT in DF & convert to raw string
+                    co_name_lj = (re.sub(r'[\'\"]', '', co_name_lj) )             # remove " ' and strip leading/trailing spaces
+                    
+                    # Clean price and convert to float
+                    price_cl = (re.sub(r'[\,]', '', price))                      # remove commas
+                    try:
+                        price_clean = float(price_cl)
+                    except ValueError:
+                        logging.warning(f"{cmi_debug} : Could not convert price '{price_cl}' to float, using 0.0")
+                        price_clean = 0.0
+                    
+                    # Clean change value and convert to float
+                    try:
+                        change_clean = float(re.sub(r'[\,]', '', change_cl))
+                    except ValueError:
+                        logging.warning(f"{cmi_debug} : Could not convert change '{change_cl}' to float, using 0.0")
+                        change_clean = 0.0
 
-            pct_sign = next(extr_strs)              # 5 : test for dedicated column for +/- indicator
-            logging.info( f"{cmi_debug} : {co_sym} : Check dedicated [+-] field for % CHANGE" )
-            if pct_sign == "+" or pct_sign == "-":  # 5 : is %_change sign [+/-] a dedciated field
-                pct_val = next(extr_strs)           # 5 : advance iterator to next field (ignore dedciated sign field)
-            else:
-                pct_val = pct_sign                  # 5 get % change, but its possibly +/- signed
-                if (re.search(r'\+', pct_val)) or (re.search(r'\-', pct_val)) is not None:
-                    logging.info( f"{cmi_debug} : {pct_val} : % CHANGE is signed [+-], stripping..." )
-                    pct_cl = re.sub(r'[\+\-\%]', "", pct_val)       # remove +/-/% signs
-                    logging.info( f"{cmi_debug} : % CHANGE cleaned to: {pct_cl}" )
-                else:
-                    logging.info( f"{cmi_debug} : {pct_val} : % CHANGE is NOT signed [+-]" )
-                    change_cl = re.sub(r'[\,\%]', "", pct_val)       # remove
-                    logging.info( f"{cmi_debug} : % CHANGE: {pct_val}" )
+                    # Clean percentage value and convert to float
+                    if pct_val == "N/A":
+                        pct_clean = float(0.0)                               # Bad data. Found a field with N/A instead of real num
+                    else:
+                        try:
+                            pct_clean = float(re.sub(r'[\%\+\-,]', "", pct_val))
+                        except ValueError:
+                            logging.warning(f"{cmi_debug} : Could not convert percentage '{pct_val}' to float, using 0.0")
+                            pct_clean = 0.0
 
-            ################################ 3 ####################################
-            vol = next(extr_strs)            # 6 : volume with scale indicator/ e.g "70.250k"
-            avg_vol = next(extr_strs)        # 7 : Avg. vol over 3 months) / e.g "61,447"
-            mktcap = next(extr_strs)         # 8 : Market cap with scale indicator / e.g "15.753B"
-            peratio = next(extr_strs)        # 9 : PE ratio TTM (Trailing 12 months) / e.g "N/A"
-            #mini_gfx = next(extr_strs)      # 10 : IGNORED = mini-canvas graphic 52-week rnage (no TXT/strings avail)
+                    ################################ 5 ####################################
+                    # Clean market cap and determine scale (T, B, M)
+                    mktcap = (re.sub(r'[N\/A]', '0', mktcap))               # handle N/A
+                    TRILLIONS = re.search('T', mktcap)
+                    BILLIONS = re.search('B', mktcap)
+                    MILLIONS = re.search('M', mktcap)
+                    mb = "LZ"  # Default to "Zillions" (unknown scale)
+                    
+                    try:
+                        if TRILLIONS:
+                            mktcap_clean = float(re.sub('T', '', mktcap))
+                            mb = "LT"
+                            logging.info(f'%s : #{x} : {co_sym_lj} Mkt Cap: TRILLIONS : T' % cmi_debug)
+                        elif BILLIONS:
+                            mktcap_clean = float(re.sub('B', '', mktcap))
+                            mb = "LB"
+                            logging.info(f'%s : #{x} : {co_sym_lj} Mkt cap: BILLIONS : B' % cmi_debug)
+                        elif MILLIONS:
+                            mktcap_clean = float(re.sub('M', '', mktcap))
+                            mb = "LM"
+                            logging.info(f'%s : #{x} : {co_sym_lj} Mkt cap: MILLIONS : M' % cmi_debug)
+                        else:
+                            # Try to convert directly to float if no scale indicator
+                            try:
+                                mktcap_clean = float(re.sub(r'[\,]', '', mktcap))
+                                mb = "LZ"  # Unknown scale
+                            except ValueError:
+                                mktcap_clean = 0    # error condition - possible bad data
+                                mb = "LZ"           # Zillions
+                                logging.info(f'%s : #{x} : {co_sym_lj} bad mktcap data N/A : Z' % cmi_debug)
+                    except ValueError:
+                        mktcap_clean = 0    # error condition - possible bad data
+                        mb = "LZ"           # Zillions
+                        logging.info(f'%s : #{x} : {co_sym_lj} bad mktcap data, could not convert to float: {mktcap}' % cmi_debug)
+                        
+                except Exception as e:
+                    logging.error(f"{cmi_debug} : Error processing row: {e}")
+                    continue  # Skip this row and move to the next one
 
-            ################################ 4 ####################################
-            # now wrangle the data...
-            co_sym_lj = f"{co_sym:<6}"                                   # left justify TXT in DF & convert to raw string
-            co_name_lj = np.array2string(np.char.ljust(co_name, 60) )    # left justify TXT in DF & convert to raw string
-            co_name_lj = (re.sub(r'[\'\"]', '', co_name_lj) )             # remove " ' and strip leading/trailing spaces     
-            price_cl = (re.sub(r'\,', '', price))                         # remove ,
-            price_clean = float(price_cl)
-            change_clean = float(change_val)
+                ################################ 6 ####################################
+                # now construct our list for concatinating to the dataframe 
+                logging.info( f"%s ============= Data prepared for DF =============" % cmi_debug )
 
-            if pct_val == "N/A":
-                pct_val = float(0.0)                               # Bad data. FOund a filed with N/A instead of read num
-            else:
-                pct_cl = re.sub(r'[\%\+\-,]', "", pct_val )
-                pct_clean = float(pct_cl)
+                self.list_data = [[ \
+                           x, \
+                           re.sub(r'\'', '', co_sym_lj), \
+                           co_name_lj, \
+                           price_clean, \
+                           change_clean, \
+                           pct_clean, \
+                           mktcap_clean, \
+                           mb, \
+                           time_now ]]
 
-            ################################ 5 ####################################
-            mktcap = (re.sub(r'[N\/A]', '0', mktcap))               # handle N/A
-            TRILLIONS = re.search('T', mktcap)
-            BILLIONS = re.search('B', mktcap)
-            MILLIONS = re.search('M', mktcap)
-
-            if TRILLIONS:
-                mktcap_clean = float(re.sub('T', '', mktcap))
-                mb = "LT"
-                logging.info( f'%s : #{x} : {co_sym_lj} Mkt Cap: TRILLIONS : T' % cmi_debug )
-
-            if BILLIONS:
-                mktcap_clean = float(re.sub('B', '', mktcap))
-                mb = "LB"
-                logging.info( f'%s : #{x} : {co_sym_lj} Mkt cap: BILLIONS : B' % cmi_debug )
-
-            if MILLIONS:
-                mktcap_clean = float(re.sub('M', '', mktcap))
-                mb = "LM"
-                logging.info( f'%s : #{x} : {co_sym_lj} Mkt cap: MILLIONS : M' % cmi_debug )
-
-            if not TRILLIONS and not BILLIONS and not MILLIONS:
-                mktcap_clean = 0    # error condition - possible bad data
-                mb = "LZ"           # Zillions
-                logging.info( f'%s : #{x} : {co_sym_lj} bad mktcap data N/A : Z' % cmi_debug )
-                # handle bad data in mktcap html page field
-
-            ################################ 6 ####################################
-            # now construct our list for concatinating to the dataframe 
-            logging.info( f"%s ============= Data prepared for DF =============" % cmi_debug )
-
-            self.list_data = [[ \
-                       x, \
-                       re.sub(r'\'', '', co_sym_lj), \
-                       co_name_lj, \
-                       price_clean, \
-                       change_clean, \
-                       pct_clean, \
-                       mktcap_clean, \
-                       mb, \
-                       time_now ]]
-
-            ################################ 7 ####################################
-            self.df_1_row = pd.DataFrame(self.list_data, columns=[ 'Row', 'Symbol', 'Co_name', 'Cur_price', 'Prc_change', 'Pct_change', 'Mkt_cap', 'M_B', 'Time' ], index=[x] )
-            self.tl_df0 = pd.concat([self.tl_df0, self.df_1_row])
-            x+=1
+                ################################ 7 ####################################
+                self.df_1_row = pd.DataFrame(self.list_data, columns=[ 'Row', 'Symbol', 'Co_name', 'Cur_price', 'Prc_change', 'Pct_change', 'Mkt_cap', 'M_B', 'Time' ], index=[x] )
+                self.tl_df0 = pd.concat([self.tl_df0, self.df_1_row])  
+                x+=1
+            except StopIteration:
+                logging.error(f"{cmi_debug} : StopIteration error - not enough cells in row")
+                continue
+            except Exception as e:
+                logging.error(f"{cmi_debug} : Error processing row: {e}")
+                continue
 
         logging.info('%s - populated new DF0 dataset' % cmi_debug )
         return x        # number of rows inserted into DataFrame (0 = some kind of #FAIL)
-                        # sucess = lobal class accessor (y_topgainers.*_df0) populated & updated
+                        # sucess = lobal class accessor (y_toplosers.tg_df0) populated & updated
 
     # ----------------- 5 --------------------
     def topg_listall(self):

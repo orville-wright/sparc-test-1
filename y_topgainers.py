@@ -177,6 +177,23 @@ class y_topgainers:
         self.rows_tr_rows = int(len(self.tr_rows))
         
         for datarow in self.tr_rows:
+            """
+            # >>>DEBUG<< for whedatarow.stripped_stringsn yahoo.com changes data model...
+            y = 1
+            print ( f"===================== Debug =========================" )
+            #print ( f"Data {y}: {datarow}" )
+            for i in datarow.find_all("td"):
+                print ( f"===================================================" )
+                if i.canvas is not None:
+                    print ( f"Data {y}: Found Canvas, skipping..." )
+                else:
+                    print ( f"Data {y}: {i.text}" )
+                    print ( f"Data g: {next(i.stripped_strings)}" )
+                #logging.info( f'%s - Data: {debug_data.strings}' % cmi_debug )
+                y += 1
+            print ( f"===================== Debug =========================" )
+            # >>>DEBUG<< for when yahoo.com changes data model...
+            """
             try:
                 # GENERATOR : Data Extractor that works with both requests-html and BeautifulSoup
                 def extr_gen():
@@ -361,7 +378,7 @@ class y_topgainers:
                            mb, \
                            time_now ]]
 
-                ################################ 6 ####################################
+                ################################ 7 ####################################
                 self.df_1_row = pd.DataFrame(self.list_data, columns=[ 'Row', 'Symbol', 'Co_name', 'Cur_price', 'Prc_change', 'Pct_change', 'Mkt_cap', 'M_B', 'Time' ], index=[x] )
                 self.tg_df0 = pd.concat([self.tg_df0, self.df_1_row])  
                 x+=1
