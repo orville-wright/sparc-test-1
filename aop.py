@@ -4,6 +4,7 @@ import pandas as pd
 import logging
 import argparse
 import time
+import re
 import threading
 from urllib.parse import urlparse
 from rich import print
