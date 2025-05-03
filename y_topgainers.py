@@ -93,7 +93,7 @@ class y_topgainers:
         self.yti = yti
         cmi_debug = __name__+"::"+self.ext_get_data.__name__+".#"+str(self.yti)
         logging.info('%s     - IN' % cmi_debug )
-        logging.info(f"%s     - JAVASCRIPT engine processing: {js_render}" % cmi_debug )
+        logging.info(f"%s     - JS engine request: {js_render}" % cmi_debug )
         
         # use preexisting response from managed req (handled by cookie monster) 
         r = self.ext_req
@@ -122,19 +122,19 @@ class y_topgainers:
                 r.html = HTML(html=r.text, url=r.url)
                 logging.warning(f"%s     - FALLBACK to basic HTML mode mode" % cmi_debug)
         else:
-            logging.info(f"%s  - JS engine: {js_render} using basic HTML mode" % cmi_debug)
+            logging.info(f"%s     - Use Basic HTML mode / JS engine: {js_render}" % cmi_debug)
             #html = HTML(html=r.text, url=r.url)
             #r.html = html
 
             #print (f"{r.html}" )
         
         # Try to find tbody using CSS selector
-        logging.info(f"%s     - requests-html CSS Selector processing..." % cmi_debug)
+        logging.info(f"%s     - HTML CSS Selector processing..." % cmi_debug)
         self.tag_tbody = r.html.find('tbody', first=True)
         
         if not self.tag_tbody:
-            logging.warning(f"%s     - Could not find <tbody> element using requests-html." % cmi_debug)
-            logging.info(f"%s     - Fall back to BeautifulSoup parsing." % cmi_debug)
+            logging.warning(f"%s     - Could not find <tbody> element using HTML CSS" % cmi_debug)
+            logging.info(f"%s     - Fall back to BeautifulSoup parsing" % cmi_debug)
             
             # Fallback to BeautifulSoup for parsing
             soup = BeautifulSoup(r.text, 'html.parser')
