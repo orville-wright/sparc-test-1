@@ -14,7 +14,10 @@ class y_cookiemonster:
     """
     Class to provide 2 utility methos that will...
     - Open a Yahoo Finaince webpage
-    - Porcess is as BASIC HTML or Rendered Javascript
+    - Proceess is as BASIC HTML or Rendered Javascript
+    - Cookiemonster needs a page open capabities b/c it needs to process cookies. So
+      it has to open pages. These methods are basic req open utilities with minimal logic/error checking.
+
     WARN: These methods do NOT data processing
     """
 

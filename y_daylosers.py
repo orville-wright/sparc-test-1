@@ -1,6 +1,7 @@
 #!/home/orville/venv/devel/bin/python3
 import requests
 from bs4 import BeautifulSoup
+from requests_html import HTMLSession, HTML  # Added for JavaScript rendering
 import pandas as pd
 import numpy as np
 import re
@@ -37,6 +38,7 @@ class y_daylosers:
                         'sec-fetch-site': 'same-origin', \
                         'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.131 Safari/537.36' }
 
+    # ----------------- 1 --------------------
     def __init__(self, yti):
         cmi_debug = __name__+"::"+self.__init__.__name__
         logging.info( f'%s - Instantiate.#{yti}' % cmi_debug )
@@ -47,23 +49,105 @@ class y_daylosers:
         self.yti = yti
         return
 
-
-# method #1
-    def init_dummy_session(self):
+    # ----------------- 2 --------------------    def init_dummy_session(self):
         self.dummy_resp0 = requests.get(self.dummy_url, stream=True, headers=self.yahoo_headers, cookies=self.yahoo_headers, timeout=5 )
         hot_cookies = requests.utils.dict_from_cookiejar(self.dummy_resp0.cookies)
         #self.js_session.cookies.update({'A1': self.js_resp0.cookies['A1']} )    # yahoo cookie hack
         return
 
-# method #2
-    def ext_get_data(self, yti):
+    # ----------------- 3 --------------------
+    def ext_get_data(self, yti, js_render):
         """
+        Connect to finance.yahoo.com and extract (scrape) the raw string data out of
+        the webpage data tables. Returns a requests-html handle.
+        
+        Uses requests-html to render JavaScript content, ensuring dynamic data
+        is properly loaded before extraction.
+        
+        WARRN: URL must have been pre-opened & pre-processed by cookiemonster
+
+        Parameters:
+            yti: Instance identifier
+            js_render: use JAVASCRIPT render engine or not
+            
+        Returns:
+            None, but populates self.tr_rows with requests-html Elements
+        """
+        self.yti = yti
+        cmi_debug = __name__+"::"+self.ext_get_data.__name__+".#"+str(self.yti)
+        logging.info('%s     - IN' % cmi_debug )
+        logging.info(f"%s     - JS engine request: {js_render}" % cmi_debug )
+        
+        # use preexisting response from managed req (handled by cookie monster) 
+        r = self.ext_req
+        
+        if js_render:   # should we render page with  JAVASCRIPT engine?
+            try:
+                # If ext_req is a standard requests Response object, convert to requests-html
+                if not hasattr(r, 'html'):
+                    logging.info(f"%s     - Convert Resp to requests-html..." % cmi_debug)
+                    # Create HTML object from response text
+                    html = HTML(html=r.text, url=r.url)
+                    # Store HTML object on response for consistency
+                    r.html = html
+                
+                # Try to render JavaScript if available, but make it optional
+                try:
+                    logging.info(f"%s     - Attempt to render JS content..." % cmi_debug)
+                    r.html.render(timeout=20, sleep=1)
+                    logging.info(f"%s     - JavaScript render successful" % cmi_debug)
+                except Exception as e:
+                    logging.warning(f"%s     - JavaScript rendering fail (this is okay): {e}" % cmi_debug)
+                    logging.info(f"%s - Fallback to non-rendered content" % cmi_debug)
+            except Exception as e:
+                logging.error(f"%s     - Failed to process HTML: {e}" % cmi_debug)
+                # Create a basic HTML object as fallback
+                r.html = HTML(html=r.text, url=r.url)
+                logging.warning(f"%s     - FALLBACK to basic HTML mode mode" % cmi_debug)
+        else:
+            logging.info(f"%s     - Use Basic HTML mode / JS engine: {js_render}" % cmi_debug)
+        
+        # Try to find tbody using CSS selector
+        logging.info(f"%s     - HTML CSS Selector processing..." % cmi_debug)
+        self.tag_tbody = r.html.find('tbody', first=True)
+        
+        if not self.tag_tbody:
+            logging.warning(f"%s     - Could not find <tbody> element using HTML CSS" % cmi_debug)
+            logging.info(f"%s     - Fall back to BeautifulSoup parsing" % cmi_debug)
+            
+            # Fallback to BeautifulSoup for parsing
+            soup = BeautifulSoup(r.text, 'html.parser')
+            bs_tbody = soup.find('tbody')
+            
+            if not bs_tbody:
+                logging.error(f"%s     - Could not find <tbody> element with BeautifulSoup either." % cmi_debug)
+                print (f"{r.html}")
+                return None
+                
+            # Convert BeautifulSoup elements to a format compatible with our code
+            self.tr_rows = bs_tbody.find_all("tr")
+            # Store the BeautifulSoup tbody for compatibility
+            self.tag_tbody = bs_tbody
+            self.using_bs4 = True
+            logging.info(f"%s     - Successfully fell back to BeautifulSoup parsing." % cmi_debug)
+        else:
+            # Find all tr elements within tbody using requests-html
+            self.tr_rows = self.tag_tbody.find("tr")
+            self.using_bs4 = False
+        
+        logging.info(f'%s     - Found {len(self.tr_rows)} rows in the table.' % cmi_debug)
+        logging.info('%s     - Page processed by requests-html engine' % cmi_debug)
+        return
+    
+
+    """
+    def ext_get_data(self, yti):
         Connect to finance.yahoo.com and extract (scrape) the raw string data out of
         the webpage data tables. Returns a BS4 handle.
         Send hint which engine processed & rendered the html page
         0. Simple HTML engine
         1. JAVASCRIPT HTML render engine (down redering a complex JS page in to simple HTML)
-        """
+        
         self.yti = yti
         cmi_debug = __name__+"::"+self.ext_get_data.__name__+".#"+str(self.yti)
         logging.info('%s - IN' % cmi_debug )
@@ -76,8 +160,9 @@ class y_daylosers:
         self.tr_rows = self.tag_tbody.find_all("tr")
         logging.info('%s Page processed by BS4 engine' % cmi_debug )
         return
+    """
 
-# method #3
+    # ----------------- 4 --------------------
     def build_tl_df0(self):
         """
         Build-out a fully populated Pandas DataFrame containg all the extracted/scraped fields from the
@@ -232,7 +317,7 @@ class y_daylosers:
         return x        # number of rows inserted into DataFrame (0 = some kind of #FAIL)
                         # sucess = lobal class accessor (y_topgainers.*_df0) populated & updated
 
-# method #4
+    # ----------------- 5 --------------------
     def topg_listall(self):
         """
         Print the full DataFrame table list of Yahoo Finance Top loserers
@@ -246,7 +331,7 @@ class y_daylosers:
         print ( self.tl_df0.sort_values(by='Pct_change', ascending=False ) )    # only do after fixtures datascience dataframe has been built
         return
 
-# method #5
+    # ----------------- 6 --------------------
     def build_top10(self):
         """
         Get top 10 loserers from main DF (df0) -> temp DF (df1)
@@ -264,7 +349,7 @@ class y_daylosers:
         self.tl_df1.reset_index(inplace=True, drop=True)    # reset index each time so its guaranteed sequential
         return
 
-# method #6
+    # ----------------- 7 --------------------
     def print_top10(self):
         """
         Prints the Top 10 Dataframe
@@ -278,7 +363,7 @@ class y_daylosers:
         print ( f"{self.tl_df1.sort_values(by='Pct_change', ascending=False ).head(self.rows_extr)}" )
         return
 
-# method #7
+    # ----------------- 8 --------------------
     def build_tenten60(self, cycle):
         """
         Build-up 10x10x060 historical DataFrame (df2) from source df1

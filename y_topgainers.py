@@ -83,6 +83,8 @@ class y_topgainers:
         Uses requests-html to render JavaScript content, ensuring dynamic data
         is properly loaded before extraction.
         
+        WARRN: URL must have been pre-opened & pre-processed by cookiemonster
+
         Parameters:
             yti: Instance identifier
             js_render: use JAVASCRIPT render engine or not
@@ -123,10 +125,6 @@ class y_topgainers:
                 logging.warning(f"%s     - FALLBACK to basic HTML mode mode" % cmi_debug)
         else:
             logging.info(f"%s     - Use Basic HTML mode / JS engine: {js_render}" % cmi_debug)
-            #html = HTML(html=r.text, url=r.url)
-            #r.html = html
-
-            #print (f"{r.html}" )
         
         # Try to find tbody using CSS selector
         logging.info(f"%s     - HTML CSS Selector processing..." % cmi_debug)
