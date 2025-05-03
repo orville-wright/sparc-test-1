@@ -50,10 +50,28 @@ class y_daylosers:
         return
 
     # ----------------- 2 --------------------    def init_dummy_session(self):
+    def init_dummy_session(self, yti):
+        """Initialize a session with Yahoo Finance using requests-html"""
+
+        cmi_debug = __name__+"::"+self.init_dummy_session.__name__+".#"+str(self.yti)
+        logging.info( f'%s Instance.#{yti}' % cmi_debug )                                                                            
+        try:
+            # Create a requests-html session instead of requests
+            session = HTMLSession()
+            self.dummy_resp0 = session.get(self.dummy_url, headers=self.yahoo_headers, timeout=5)
+            hot_cookies = self.dummy_resp0.cookies.get_dict()
+            logging.info(f"Successfully initialized dummy session with requests-html")
+            return True
+        except Exception as e:
+            logging.error(f"Failed to initialize dummy session: {e}")
+            return False
+
+        """
         self.dummy_resp0 = requests.get(self.dummy_url, stream=True, headers=self.yahoo_headers, cookies=self.yahoo_headers, timeout=5 )
         hot_cookies = requests.utils.dict_from_cookiejar(self.dummy_resp0.cookies)
         #self.js_session.cookies.update({'A1': self.js_resp0.cookies['A1']} )    # yahoo cookie hack
         return
+        """
 
     # ----------------- 3 --------------------
     def ext_get_data(self, yti, js_render):
@@ -147,7 +165,7 @@ class y_daylosers:
         Send hint which engine processed & rendered the html page
         0. Simple HTML engine
         1. JAVASCRIPT HTML render engine (down redering a complex JS page in to simple HTML)
-        
+
         self.yti = yti
         cmi_debug = __name__+"::"+self.ext_get_data.__name__+".#"+str(self.yti)
         logging.info('%s - IN' % cmi_debug )
