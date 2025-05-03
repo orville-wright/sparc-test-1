@@ -27,6 +27,9 @@
     },
     "perplexityai": {
       "url": "https://mcp.composio.dev/perplexityai/abandoned-creamy-horse-Y39-hm?agent=cursor"
+    },
+    "github": {
+      "url": "https://mcp.composio.dev/github/abandoned-creamy-horse-Y39-hm?agent=cursor"
     }
   }
 }
