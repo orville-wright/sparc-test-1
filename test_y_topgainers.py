@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#! python3
 """
 Test script for the refactored y_topgainers.py module.
 This script tests the migration from BeautifulSoup to requests-html.

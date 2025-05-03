@@ -1,7 +1,6 @@
-#!/home/orville/venv/devel/bin/python3
+#! python3
 from urllib.parse import urlparse
 import logging
-import argparse
 
 # logging setup
 logging.basicConfig(level=logging.INFO)
