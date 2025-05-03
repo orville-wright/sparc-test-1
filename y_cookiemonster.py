@@ -11,19 +11,15 @@ logging.basicConfig(level=logging.INFO)
 from requests_html import HTMLSession
 
 class y_cookiemonster:
-    """Class to extract Top Gainer data set from finance.yahoo.com"""
+    """
+    Class to provide 2 utility methos that will...
+    - Open a Yahoo Finaince webpage
+    - Porcess is as BASIC HTML or Rendered Javascript
+    WARN: These methods do NOT data processing
+    """
 
     # global accessors
-    tg_df0 = None          # DataFrame - Full list of top gainers
-    tg_df1 = None          # DataFrame - Ephemerial list of top 10 gainers. Allways overwritten
-    tg_df2 = None          # DataFrame - Top 10 ever 10 secs for 60 secs
-    tl_dfo = None
-    tl_df1 = None
-    tl_df2 = None
-
-    all_tag_tr = None      # BS4 handle of the <tr> extracted data
-    tag_tbody = None
-    yti = 0
+    yti = 0             # instance identifier
     cycle = 0           # class thread loop counter
 
     yahoo_headers = { \
@@ -42,16 +38,18 @@ class y_cookiemonster:
         cmi_debug = __name__+"::"+self.__init__.__name__
         logging.info( f'%s - Instantiate.#{yti}' % cmi_debug )
         # init empty DataFrame with present colum names
-        self.tg_df0 = pd.DataFrame(columns=[ 'Row', 'Symbol', 'Co_name', 'Cur_price', 'Prc_change', 'Pct_change', 'Mkt_cap', 'M_B', 'Time'] )
-        self.tg_df1 = pd.DataFrame(columns=[ 'ERank', 'Symbol', 'Co_name', 'Cur_price', 'Prc_change', 'Pct_change', 'Mkt_cap', 'M_B', 'Time'] )
-        self.tg_df2 = pd.DataFrame(columns=[ 'ERank', 'Symbol', 'Co_name', 'Cur_price', 'Prc_change', 'Pct_change', 'Mkt_cap', 'M_B', 'Time'] )
         self.yti = yti
         return
 
     # ----------------- 1 --------------------=
     def get_html_data(self, html_url):
-        """Connect to finance.yahoo.com and extract (scrape) the raw sring data out of"""
-        """the embedded webpage [Stock:Top Gainers] html data table. Returns a BS4 handle."""
+        """
+        Connect to finance.yahoo.com and open te page only.
+
+        Return: Handle of opened URL
+
+        WARN: This functon does NO data processing or HTML/Javascript rendering.
+        """
 
         cmi_debug = __name__+"::"+self.get_html_data.__name__+".#"+str(self.yti)
         logging.info('%s - IN' % cmi_debug )
@@ -70,10 +68,10 @@ class y_cookiemonster:
 
     # ----------------- 2 --------------------
     def get_js_data(self, js_url):
-        """Connect to finance.yahoo.com and open a Javascript Webpage"""
-        """Process with Javascript engine and return JS webpage handle"""
-        """Optionally the Javascript engine can render the webspage as Javascript and"""
-        """and then hand back the processed JS webpage. - This is currently didabled"""
+        """
+        Connect to finance.yahoo.com and open a  Webpage as Javascript object
+        Process with Javascript render engine and return JS webpage handle
+        """
 
         cmi_debug = __name__+"::"+self.get_js_data.__name__+".#"+str(self.yti)
         logging.info('%s - IN' % cmi_debug )
