@@ -10,8 +10,6 @@ logging.basicConfig(level=logging.INFO)
 
 from requests_html import HTMLSession
 
-#####################################################
-
 class y_cookiemonster:
     """Class to extract Top Gainer data set from finance.yahoo.com"""
 
@@ -38,7 +36,7 @@ class y_cookiemonster:
                             'sec-fetch-site': 'same-origin', \
                             'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.131 Safari/537.36' }
         
-##############################################################################
+    # ----------------- 0 --------------------=
     def __init__(self, yti):
         cmi_debug = __name__+"::"+self.__init__.__name__
         logging.info( f'%s - Instantiate.#{yti}' % cmi_debug )
@@ -49,16 +47,22 @@ class y_cookiemonster:
         self.yti = yti
         return
 
-##############################################################################
-# method #1
-    def get_scap_data(self):
+    # ----------------- 1 --------------------=
+    def get_html_data(self, html_url):
         """Connect to finance.yahoo.com and extract (scrape) the raw sring data out of"""
         """the embedded webpage [Stock:Top Gainers] html data table. Returns a BS4 handle."""
 
-        cmi_debug = __name__+"::"+self.get_scap_data.__name__+".#"+str(self.yti)
+        cmi_debug = __name__+"::"+self.get_html_data.__name__+".#"+str(self.yti)
         logging.info('%s - IN' % cmi_debug )
-        r = requests.get("https://finance.yahoo.com/gainers" )
+        ht_url = "https://" + html_url
+
         logging.info('%s - read html stream' % cmi_debug )
+
+        logging.info( f"%s - HTML get request..." % cmi_debug )
+        logging.info( f"%s - URL: {ht_url}" % cmi_debug )
+
+        r = requests.get(ht_url )
+
         self.soup = BeautifulSoup(r.text, 'html.parser')
         # ATTR style search. Results -> Dict
         # <tr tag in target merkup line has a very complex 'class=' but the attributes are unique. e.g. 'simpTblRow' is just one unique attribute
@@ -73,8 +77,7 @@ class y_cookiemonster:
         r.close()
         return
 
-###########################################################################################
-# method #2
+    # ----------------- 2 --------------------
     def get_js_data(self, js_url):
         """Connect to finance.yahoo.com and open a Javascript Webpage"""
         """Process with Javascript engine and return JS webpage handle"""
@@ -103,7 +106,7 @@ class y_cookiemonster:
         
             logging.info( f"%s - JS_session.get() sucessful !" % cmi_debug )
         
-        logging.info( f"%s - html.render()... diasbled" % cmi_debug )
+        logging.info( f"%s - JS html.render()... diasbled" % cmi_debug )
         #self.js_resp0.html.render()
         # this needs to be a setting that can be controlled from the caller.
         # it correnlty times-out with pypuppeteer timeout failure

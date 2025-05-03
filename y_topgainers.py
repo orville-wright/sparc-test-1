@@ -46,6 +46,7 @@ class y_topgainers:
                         'sec-fetch-site': 'same-origin', \
                         'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.131 Safari/537.36' }
 
+    # ----------------- 1 --------------------
     def __init__(self, yti):
         cmi_debug = __name__+"::"+self.__init__.__name__
         logging.info( f'%s Instance.#{yti}' % cmi_debug )
@@ -56,7 +57,7 @@ class y_topgainers:
         self.yti = yti
         return
 
-    #method 1
+    # ----------------- 2 --------------------
     def init_dummy_session(self):
         """Initialize a session with Yahoo Finance using requests-html"""
         try:
@@ -70,7 +71,7 @@ class y_topgainers:
             logging.error(f"Failed to initialize dummy session: {e}")
             return False
 
-    # method #2
+    # ----------------- 3 --------------------
     def ext_get_data(self, yti):
         """
         Connect to finance.yahoo.com and extract (scrape) the raw string data out of
@@ -149,7 +150,7 @@ class y_topgainers:
         logging.info('%s - Page processed by requests-html engine' % cmi_debug)
         return
     
-    # method #3
+    # ----------------- 4 --------------------
     def build_tg_df0(self):
         """
         Build-out a fully populated Pandas DataFrame containg all the extracted/scraped fields from the
@@ -367,7 +368,7 @@ class y_topgainers:
         return x        # number of rows inserted into DataFrame (0 = some kind of #FAIL)
                         # sucess = lobal class accessor (y_toplosers.tg_df0) populated & updated
 
-    # method #4
+    # ----------------- 5 --------------------
     def topg_listall(self):
         """Print the full DataFrame table list of Yahoo Finance Top Gainers"""
         """Sorted by % Change"""
@@ -379,7 +380,7 @@ class y_topgainers:
         print ( self.tg_df0.sort_values(by='Pct_change', ascending=False ) )    # only do after fixtures datascience dataframe has been built
         return
 
-    # method #5
+    # ----------------- 6 --------------------
     def build_top10(self):
         """
         Get top gainers from main DF (df0) -> temp DF (df1)
@@ -397,7 +398,7 @@ class y_topgainers:
         self.tg_df1.reset_index(inplace=True, drop=True)    # reset index each time so its guaranteed sequential
         return
 
-    # method #6
+    # ----------------- 7 --------------------
     def print_top10(self):
         """
         Prints the Top 10 Dataframe
@@ -412,7 +413,7 @@ class y_topgainers:
         print ( f"{self.tg_df1.sort_values(by='Pct_change', ascending=False ).head(self.rows_extr)}" )
         return
 
-    # method #7
+    # ----------------- 8 --------------------
     def build_tenten60(self, cycle):
         """Build-up 10x10x060 historical DataFrame (df2) from source df1"""
         """Generally called on some kind of cycle"""
@@ -424,7 +425,7 @@ class y_topgainers:
         self.tg_df2.reset_index(inplace=True, drop=True)    # ensure index is allways unique + sequential
         return
 
-    # Helper method for safe JavaScript rendering
+    # ----------------- 9 --------------------
     def safe_render(self, response, max_retries=3, initial_timeout=20):
         """Safely render JavaScript content with retries"""
         timeout = initial_timeout
