@@ -27,7 +27,7 @@ class y_topgainers:
     tg_df1 = ""          # DataFrame - Ephemerial list of top 10 gainers. Allways overwritten
     tg_df2 = ""          # DataFrame - Top 10 ever 10 secs for 60 secs
     rows_extr = 0        # number of rows of data extracted
-    ext_req = ""         # request was handled by y_cookiemonster
+    ext_req = ""         # request URL open handled externally by y_cookiemonster
     tag_tbody = None     # requests-html Element for tbody
     tr_rows = None       # requests-html Elements for tr rows
     yti = 0
@@ -58,8 +58,11 @@ class y_topgainers:
         return
 
     # ----------------- 2 --------------------
-    def init_dummy_session(self):
+    def init_dummy_session(self, yti):
         """Initialize a session with Yahoo Finance using requests-html"""
+
+        cmi_debug = __name__+"::"+self.init_dummy_session.__name__+".#"+str(self.yti)
+        logging.info( f'%s Instance.#{yti}' % cmi_debug )                                                                            
         try:
             # Create a requests-html session instead of requests
             session = HTMLSession()
@@ -72,7 +75,7 @@ class y_topgainers:
             return False
 
     # ----------------- 3 --------------------
-    def ext_get_data(self, yti):
+    def ext_get_data(self, yti, js_render):
         """
         Connect to finance.yahoo.com and extract (scrape) the raw string data out of
         the webpage data tables. Returns a requests-html handle.
@@ -82,57 +85,63 @@ class y_topgainers:
         
         Parameters:
             yti: Instance identifier
+            js_render: use JAVASCRIPT render engine or not
             
         Returns:
             None, but populates self.tr_rows with requests-html Elements
         """
         self.yti = yti
         cmi_debug = __name__+"::"+self.ext_get_data.__name__+".#"+str(self.yti)
-        logging.info('%s - IN' % cmi_debug )
-        logging.info('%s - ext request pre-processed by cookiemonster...' % cmi_debug )
+        logging.info('%s     - IN' % cmi_debug )
+        logging.info(f"%s     - JAVASCRIPT engine processing: {js_render}" % cmi_debug )
         
         # use preexisting response from managed req (handled by cookie monster) 
         r = self.ext_req
         
-        # Add JavaScript rendering capability
-        try:
-            # If ext_req is a standard requests Response object, convert to requests-html
-            if not hasattr(r, 'html'):
-                logging.info(f"%s - Converting requests Response to requests-html..." % cmi_debug)
-                # Create HTML object from response text
-                html = HTML(html=r.text, url=r.url)
-                # Store HTML object on response for consistency
-                r.html = html
-            
-            # Try to render JavaScript if available, but make it optional
+        if js_render:   # should we render page with  JAVASCRIPT engine?
             try:
-                logging.info(f"%s - Attempting to render JavaScript content..." % cmi_debug)
-                r.html.render(timeout=20, sleep=1)
-                logging.info(f"%s - JavaScript rendering successful" % cmi_debug)
+                # If ext_req is a standard requests Response object, convert to requests-html
+                if not hasattr(r, 'html'):
+                    logging.info(f"%s     - Convert Resp to requests-html..." % cmi_debug)
+                    # Create HTML object from response text
+                    html = HTML(html=r.text, url=r.url)
+                    # Store HTML object on response for consistency
+                    r.html = html
+                
+                # Try to render JavaScript if available, but make it optional
+                try:
+                    logging.info(f"%s     - Attempt to render JS content..." % cmi_debug)
+                    r.html.render(timeout=20, sleep=1)
+                    logging.info(f"%s     - JavaScript render successful" % cmi_debug)
+                except Exception as e:
+                    logging.warning(f"%s     - JavaScript rendering fail (this is okay): {e}" % cmi_debug)
+                    logging.info(f"%s - Fallback to non-rendered content" % cmi_debug)
             except Exception as e:
-                logging.warning(f"%s - JavaScript rendering not available (this is okay): {e}" % cmi_debug)
-                logging.info(f"%s - Continuing with non-rendered content" % cmi_debug)
-        except Exception as e:
-            logging.error(f"%s - Failed to process HTML: {e}" % cmi_debug)
-            # Create a basic HTML object as fallback
-            r.html = HTML(html=r.text, url=r.url)
-            logging.warning(f"%s - Using fallback HTML processing" % cmi_debug)
-        
-        logging.info(f"%s - requests-html processing..." % cmi_debug)
+                logging.error(f"%s     - Failed to process HTML: {e}" % cmi_debug)
+                # Create a basic HTML object as fallback
+                r.html = HTML(html=r.text, url=r.url)
+                logging.warning(f"%s     - FALLBACK to basic HTML mode mode" % cmi_debug)
+        else:
+            logging.warning(f"%s  - Asked to use basic HTML mode" % cmi_debug)
+            #html = HTML(html=r.text, url=r.url)
+            #r.html = html
+            print (f"{r.html}")
         
         # Try to find tbody using CSS selector
+        logging.info(f"%s     - requests-html CSS Selector processing..." % cmi_debug)
         self.tag_tbody = r.html.find('tbody', first=True)
         
         if not self.tag_tbody:
-            logging.warning(f"%s - Could not find the <tbody> element using requests-html." % cmi_debug)
-            logging.info(f"%s - Falling back to BeautifulSoup for parsing." % cmi_debug)
+            logging.warning(f"%s     - Could not find <tbody> element using requests-html." % cmi_debug)
+            logging.info(f"%s     - Fall back to BeautifulSoup parsing." % cmi_debug)
             
             # Fallback to BeautifulSoup for parsing
             soup = BeautifulSoup(r.text, 'html.parser')
             bs_tbody = soup.find('tbody')
             
             if not bs_tbody:
-                logging.error(f"%s - Could not find <tbody> element with BeautifulSoup either." % cmi_debug)
+                logging.error(f"%s     - Could not find <tbody> element with BeautifulSoup either." % cmi_debug)
+                print (f"{r.html}")
                 return None
                 
             # Convert BeautifulSoup elements to a format compatible with our code
@@ -140,14 +149,14 @@ class y_topgainers:
             # Store the BeautifulSoup tbody for compatibility
             self.tag_tbody = bs_tbody
             self.using_bs4 = True
-            logging.info(f"%s - Successfully fell back to BeautifulSoup parsing." % cmi_debug)
+            logging.info(f"%s     - Successfully fell back to BeautifulSoup parsing." % cmi_debug)
         else:
             # Find all tr elements within tbody using requests-html
             self.tr_rows = self.tag_tbody.find("tr")
             self.using_bs4 = False
         
-        logging.info(f'%s - Found {len(self.tr_rows)} rows in the table.' % cmi_debug)
-        logging.info('%s - Page processed by requests-html engine' % cmi_debug)
+        logging.info(f'%s     - Found {len(self.tr_rows)} rows in the table.' % cmi_debug)
+        logging.info('%s     - Page processed by requests-html engine' % cmi_debug)
         return
     
     # ----------------- 4 --------------------
@@ -158,9 +167,9 @@ class y_topgainers:
         """
 
         cmi_debug = __name__+"::"+self.build_tg_df0.__name__+".#"+str(self.yti)
-        logging.info('%s - IN' % cmi_debug )
+        logging.info('%s     - IN' % cmi_debug )
         time_now = time.strftime("%H:%M:%S", time.localtime() )
-        logging.info('%s - Create clean NULL DataFrame' % cmi_debug )
+        logging.info('%s     - Create clean NULL DataFrame' % cmi_debug )
         self.tg_df0 = pd.DataFrame()             # new df, but is NULLed
         x = 0
         
@@ -170,7 +179,7 @@ class y_topgainers:
         
         for datarow in self.tr_rows:
             try:
-                # Data Extractor Generator that works with both requests-html and BeautifulSoup
+                # GENERATOR : Data Extractor that works with both requests-html and BeautifulSoup
                 def extr_gen():
                     if hasattr(self, 'using_bs4') and self.using_bs4:
                         # BeautifulSoup version
@@ -192,7 +201,7 @@ class y_topgainers:
                                 if '\n' in text:
                                     # Split by newline and take the first line (usually the main value)
                                     lines = text.split('\n')
-                                    logging.info(f"{cmi_debug} : Multi-line text detected: {text}")
+                                    logging.info(f"{cmi_debug} GEN - Multi-line text detected: {text}")
                                     
                                     # For price, take the first line
                                     if len(lines) > 0 and all(c.isdigit() or c in '.-,' for c in lines[0].replace(',', '')):

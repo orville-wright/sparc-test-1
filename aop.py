@@ -125,12 +125,13 @@ def main():
     if args['bool_tops'] is True:
         print ( "========== Large Cap / Top Gainers ===============================" )
         ## new JS data extractor
-        topgainer_reader = y_cookiemonster(1)         # instantiate class of cookiemonster
+        url_reader = y_cookiemonster(1)         # instantiate class of cookiemonster
         mlx_top_dataset = y_topgainers(1)             # instantiate class
-        mlx_top_dataset.init_dummy_session()          # setup cookie jar and headers
+        mlx_top_dataset.init_dummy_session(1)          # setup cookie jar and headers
  
-        mlx_top_dataset.ext_req = topgainer_reader.get_js_data('finance.yahoo.com/markets/stocks/most-active/')
-        mlx_top_dataset.ext_get_data(1)
+        #mlx_top_dataset.ext_req = topgainer_reader.get_js_data('finance.yahoo.com/markets/stocks/most-active/')
+        mlx_top_dataset.ext_req = url_reader.get_html_data('finance.yahoo.com/markets/stocks/most-active/')
+        mlx_top_dataset.ext_get_data(1, js_render=False)
 
         x = mlx_top_dataset.build_tg_df0()     # build full dataframe
         mlx_top_dataset.build_top10()          # show top 10

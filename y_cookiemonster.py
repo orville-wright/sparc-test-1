@@ -14,14 +14,15 @@ class y_cookiemonster:
     """Class to extract Top Gainer data set from finance.yahoo.com"""
 
     # global accessors
-    tg_df0 = ""          # DataFrame - Full list of top gainers
-    tg_df1 = ""          # DataFrame - Ephemerial list of top 10 gainers. Allways overwritten
-    tg_df2 = ""          # DataFrame - Top 10 ever 10 secs for 60 secs
-    tl_dfo = ""
-    tl_df1 = ""
-    tl_df2 = ""
+    tg_df0 = None          # DataFrame - Full list of top gainers
+    tg_df1 = None          # DataFrame - Ephemerial list of top 10 gainers. Allways overwritten
+    tg_df2 = None          # DataFrame - Top 10 ever 10 secs for 60 secs
+    tl_dfo = None
+    tl_df1 = None
+    tl_df2 = None
 
-    all_tag_tr = ""      # BS4 handle of the <tr> extracted data
+    all_tag_tr = None      # BS4 handle of the <tr> extracted data
+    tag_tbody = None
     yti = 0
     cycle = 0           # class thread loop counter
 
@@ -61,21 +62,23 @@ class y_cookiemonster:
         logging.info( f"%s - HTML get request..." % cmi_debug )
         logging.info( f"%s - URL: {ht_url}" % cmi_debug )
 
-        r = requests.get(ht_url )
+        session = HTMLSession()
+        self.r = session.get(ht_url)
+        #logging.info('%s - saved basic HTMLsession req object' % cmi_debug )
 
-        self.soup = BeautifulSoup(r.text, 'html.parser')
+        #self.r = requests.get(ht_url )
+        #self.soup = BeautifulSoup(self.r.text, 'html.parser')
         # ATTR style search. Results -> Dict
         # <tr tag in target merkup line has a very complex 'class=' but the attributes are unique. e.g. 'simpTblRow' is just one unique attribute
-        logging.info('%s - save data object handle' % cmi_debug )
-        self.tag_tbody = self.soup.find('tbody')
-        self.all_tag_tr = self.soup.find_all(attrs={"class": "simpTblRow"})   # simpTblRow
+        #self.tag_tbody = self.soup.find('tbody')
+        #self.all_tag_tr = self.soup.find_all(attrs={"class": "simpTblRow"})   # simpTblRow
         #self.tr_rows = self.tag_tbody.find(attrs={"class": "simpTblRow"})
 
-        print ( f">>> DEBUG:\n {r.text}" )
+        #print ( f">>> DEBUG:\n {self.r.text}" )
 
         logging.info('%s - close url handle' % cmi_debug )
-        r.close()
-        return
+        self.r.close()
+        return self.r
 
     # ----------------- 2 --------------------
     def get_js_data(self, js_url):
