@@ -1,16 +1,14 @@
-#!/home/orville/venv/devel/bin/python3
-import requests
+#! python3
+
 from bs4 import BeautifulSoup
 from requests_html import HTMLSession, HTML  # Added for JavaScript rendering
 import pandas as pd
 import numpy as np
 import re
 import logging
-import argparse
 import time
 from rich import print
 
-# logging setup
 logging.basicConfig(level=logging.INFO)
 
 #####################################################

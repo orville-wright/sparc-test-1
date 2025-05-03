@@ -1,12 +1,11 @@
-#!/home/orville/venv/devel/bin/python3
-import requests
+#! python3
+
 from bs4 import BeautifulSoup
 from requests_html import HTMLSession, HTML  # Added for JavaScript rendering
 import pandas as pd
 import numpy as np
 import re
 import logging
-import argparse
 import time
 from rich import print
 
@@ -14,7 +13,9 @@ logging.basicConfig(level=logging.INFO)
 
 #####################################################
 class y_daylosers:
-    """Class to extract Top Losers data set from finance.yahoo.com"""
+    """
+    Class to extract Top Losers data set from finance.yahoo.com
+    """
     # global accessors
     tl_df0 = ""          # DataFrame - Full list of top loserers
     tl_df1 = ""          # DataFrame - Ephemerial list of top 10 loserers. Allways overwritten
@@ -65,13 +66,6 @@ class y_daylosers:
         except Exception as e:
             logging.error(f"Failed to initialize dummy session: {e}")
             return False
-
-        """
-        self.dummy_resp0 = requests.get(self.dummy_url, stream=True, headers=self.yahoo_headers, cookies=self.yahoo_headers, timeout=5 )
-        hot_cookies = requests.utils.dict_from_cookiejar(self.dummy_resp0.cookies)
-        #self.js_session.cookies.update({'A1': self.js_resp0.cookies['A1']} )    # yahoo cookie hack
-        return
-        """
 
     # ----------------- 3 --------------------
     def ext_get_data(self, yti, js_render):
@@ -157,29 +151,6 @@ class y_daylosers:
         logging.info('%s     - Page processed by requests-html engine' % cmi_debug)
         return
     
-
-    """
-    def ext_get_data(self, yti):
-        Connect to finance.yahoo.com and extract (scrape) the raw string data out of
-        the webpage data tables. Returns a BS4 handle.
-        Send hint which engine processed & rendered the html page
-        0. Simple HTML engine
-        1. JAVASCRIPT HTML render engine (down redering a complex JS page in to simple HTML)
-
-        self.yti = yti
-        cmi_debug = __name__+"::"+self.ext_get_data.__name__+".#"+str(self.yti)
-        logging.info('%s - IN' % cmi_debug )
-        logging.info('%s - ext request pre-processed by cookiemonster...' % cmi_debug )
-        # use an existing resposne from a previously managed req (handled by cookie monster) 
-        r = self.ext_req
-        logging.info( f"%s - BS4 stream processing..." % cmi_debug )
-        self.soup = BeautifulSoup(r.text, 'html.parser')
-        self.tag_tbody = self.soup.find('tbody')
-        self.tr_rows = self.tag_tbody.find_all("tr")
-        logging.info('%s Page processed by BS4 engine' % cmi_debug )
-        return
-    """
-
     # ----------------- 4 --------------------
     def build_tl_df0(self):
         """

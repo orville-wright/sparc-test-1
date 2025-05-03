@@ -1,10 +1,8 @@
-#!/home/orville/venv/devel/bin/python3
-import urllib.request
+#! python3
+
 import pandas as pd
 import logging
-import argparse
 
-# logging setup
 logging.basicConfig(level=logging.INFO)
 
 # my private classes & methods
