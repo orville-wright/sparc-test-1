@@ -1,10 +1,9 @@
 #! python3
-import urllib.request
+
 import pandas as pd
 import logging
 import argparse
 import time
-import re
 import threading
 from urllib.parse import urlparse
 from rich import print
@@ -183,27 +182,13 @@ def main():
         scap_reader = y_cookiemonster(2)             # instantiate class of cookiemonster
         small_cap_dataset = smallcap_screen(1)       # instantiate class of a Small Scap Screener
         small_cap_dataset.init_dummy_session()       # setup cookie jar and headers
- 
-        #small_cap_dataset.get_data(1)
-        #small_cap_dataset.ext_req = scap_reader.get_js_data('finance.yahoo.com/screener/predefined/small_cap_gainers/')
-        #small_cap_dataset.ext_req = scap_reader.get_js_data('finance.yahoo.com/research-hub/screener/small_cap_gainers/?guccounter=1&guce_referrer=aHR0cHM6Ly9sb2dpbi55YWhvby5jb20v&guce_referrer_sig=AQAAAI3vp_nhrREFAZEd8hz2PmJEWD7VaT_BSBndiFDRmuxRoEdN6B1ueh0ElsNdB6qSP0A-d1sAs_P0_lteTp51lkefa5U4qBxlDDl5HILBDRTJQ9XuGlBvQ-CzUUPSkSF3vyMhxlQnuAaSsrUSJpAZiHIJTy4YcbWJTYz7YRtOm2sH')
-        small_cap_dataset.ext_req = scap_reader.get_js_data('finance.yahoo.com/research-hub/screener/small_cap_gainers/')
 
+        small_cap_dataset.ext_req = scap_reader.get_js_data('finance.yahoo.com/research-hub/screener/small_cap_gainers/')
         small_cap_dataset.ext_get_data(1)
         
         x = small_cap_dataset.build_df0()         # build full dataframe
         small_cap_dataset.build_top10()           # show top 10
         small_cap_dataset.print_top10()           # print it
-
-        #yf_sc_screener = cookie_monster(1, "/screener/predefined/small_cap_gainers/", args)
-        #yf_sc_screener.form_url_endpoint()
-        #yf_sc_screener.update_headers()
-        #yf_sc_screener.init_dummy_session(0)    # 0 = html / 1 = javascript
-        #yf_sc_screener.update_cookies()
-        #yf_sc_screener.do_html_get()            # jorh = 0
-        #yf_sc_screener.update_cookies()
-        # jorh : 0 = Simple HTML engine processor / 1 = JAVASCRIPT engine renderer
-        #small_cap_dataset.get_data(1, yf_sc_screener.js_resp1, yf_sc_screener.jorh)              # extract data from finance.Yahoo.com
 
         # Recommendation #1 - Best small cap % gainer with lowest buy-in price
         recommended.update(small_cap_dataset.screener_logic())
@@ -239,140 +224,6 @@ def main():
         # Add unusual vol into recommendations list []
         #recommended['2'] = ('Unusual vol:', ulsym.rstrip(), '$'+str(ulp), ulname.rstrip(), '+%'+str(un_vol_activity.up_df0.loc[uminv, ['Pct_change']][0]) )
         recommended['2'] = ('Unusual vol:', ulsym.rstrip(), '$'+str(ulp), ulname.rstrip(), '+%'+str(upct) )
-
-# generate FINAL combo list ################################################################################
-# combine all the findings into 1 place - single source of truth
-    """
-    DEEP amalysis means - try to understand & inferr plain language reasons as to why these stock are
-    appearing in the final 'Single Source of Truth' combo_df. Having a big list of top mover/highly active
-    stocks isn't meaningful unless you can understand (quickly in real-time) whats going on with each one.
-    From here, you can plan to do something... otherwise, this is just a meaningless list.
-    NOTE: Most of this logic prepares/cleans/wrangles data into a perfect combo_df 'Single Source of Truth'.
-    """
-    if args['bool_deep'] is True and args['bool_scr'] is True and args['bool_uvol'] is True:
-        x = combo_logic(1, mlx_top_dataset, small_cap_dataset, un_vol_activity, args )
-        x.polish_combo_df(1)
-        x.tag_dupes()
-        x.tag_uniques()
-        x.rank_hot()       # currently disabled b/c it errors. pandas statment needs to be simplifed and split
-        #x.find_hottest()
-        x.rank_unvol()     # ditto
-        x.rank_caps()      # ditto
-        x.combo_df.sort_values(by=['Symbol'])         # sort by sumbol name (so dupes are linearly grouped)
-        x.reindex_combo_df()                          # re-order a new index (PERMENANT write)
-
-# Summarize combo list key findings ##################################################################
-        # Curious Outliers
-        # temp_1 = x.combo_df.sort_values(by=['Pct_change'], ascending=False)
-        # temp_1 = x.combo_df.sort_values(by=['Symbol'])                        # sort by sumbol name (so dupes are linearly grouped)
-        # temp_1.reset_index(inplace=True, drop=True)                           # reset index
-
-        x.find_hottest()
-
-        print ( f"========== Hot stock anomolies ===================================================" )
-        if x.combo_dupes_only_listall(1).empty:
-            print ( f"NONE found at moment" )
-        else:
-            print ( f"{x.combo_dupes_only_listall(1)}" )
-
-        print ( " " )
-        print ( f"========== Full System of Truth  ===================================================" )
-        print ( f"\n{x.combo_df}" )    # sort by %
-        print ( " " )
-
-        print ( "========== ** OUTLIERS ** : Unusual UP volume + Top Gainers by +5% ================================" )
-        print ( " " )
-        temp_1 = x.combo_df.sort_values(by=['Pct_change'], ascending=False) 
-        print ( f"{temp_1}" )       # DUPLES in the DF = a curious outlier
-        # print ( f"{temp_1[temp_1.duplicated(['Symbol'], keep='first')]}" )    # DUPLES in the DF = a curious outlier
-        #print ( f"{temp_1[temp_1.duplicated(['Symbol'], keep='last')]}" )       # DUPLES in the DF = a curious outlier
-        print ( " " )
-        print ( f"================= >>COMBO<< Full list of intersting market observations ==================" )
-        #print ( f"{x.combo_listall_nodupes()}" )
-        temp_2 = x.combo_listall_nodupes()                                      # dupes by SYMBOL only
-        print ( f"{temp_2.sort_values(by=['Pct_change'], ascending=False)}" )
-
-        if len(x.rx) == 0:      # rx=[] holds hottest stock with lowest price overall
-            print ( " " )       # empty list[] = no stock found yet (prob very early in trading morning)
-            print ( f"No **hot** stock for >>LOW<< buy-in recommendations list yet" )
-        else:
-            hotidx = x.rx[0]
-            hotsym = x.rx[1]
-            hotp = x.combo_df.at[hotidx, 'Cur_price']
-            #hotp = x.combo_df.loc[[x.combo_df['Symbol'] == hotsym], ['Cur_price']]
-            hotname = x.combo_df.at[hotidx, 'Co_name']
-            hotpct = x.combo_df.at[hotidx, 'Pct_change']
-            #hotname = x.combo_df.loc[hotidx, ['Co_name']][0]
-            print ( " " )       # empty list[] = no stock found yet (prob very early in trading morning)
-
-            #row_index = x.combo_df.loc[x.combo_df['Symbol'] == hotsym.rstrip()].index[0]
-
-            #recommended['3'] = ('Hottest:', hotsym.rstrip(), '$'+str(hotp), hotname.rstrip(), '+%'+str(x.combo_df.loc[hotidx, ['Pct_change']][0]) )
-            recommended['3'] = ('Hottest:', hotsym.rstrip(), '$'+str(hotp), hotname.rstrip(), '+%'+str(x.combo_df.at[hotidx, 'Pct_change']) )
-            print ( f"==============================================================================================" )
-            print ( f"Best low-buy highest %gain **Hot** OPPTY: {hotsym.rstrip()} - {hotname.rstrip()} / {'$'+str(hotp)} / {'+%'+str(hotpct)} gain" )
-            print ( " " )
-            print ( " " )
-
-        # lowest priced stock
-        clp = x.combo_df['Cur_price'].min()
-        cminv = x.combo_df['Cur_price'].idxmin()
-        i_got_min = x.combo_df.loc[cminv]
-
-        clsym = i_got_min.at['Symbol']                # get symbol of lowest price item @ index_id
-        clname = i_got_min.at['Co_name']              # get name of lowest price item @ index_id
-        clupct = i_got_min.at['Pct_change']           # get %change of lowest price item @ index_id
-
-        #clsym = x.combo_df.loc[cminv, ['Symbol']][0]
-        #clname = x.combo_df.loc[cminv, ['Co_name']][0]    
-        #recommended['4'] = ('Large cap:', clsym.rstrip(), '$'+str(clp), clname.rstrip(), '+%'+str(x.combo_df.loc[cminv, ['Pct_change']][0]) )
-
-        recommended['4'] = ('Large cap:', clsym.rstrip(), '$'+str(clp), clname.rstrip(), '+%'+str(clupct) )
-
-        # Biggest % gainer stock
-        cmax = x.combo_df['Pct_change'].idxmax()
-        clp = x.combo_df.loc[cmax, 'Cur_price']
-        i_got_max = x.combo_df.loc[cmax]
-
-        clsym = i_got_max.at['Symbol']                # get symbol of lowest price item @ index_id
-        clname = i_got_max.at['Co_name']              # get name of lowest price item @ index_id
-        clupct = i_got_max.at['Pct_change']           # get %change of lowest price item @ index_id
-        #recommended['5'] = ('Top % gainer:', clsym.rstrip(), '$'+str(clp), clname.rstrip(), '+%'+str(x.combo_df.loc[cmax, ['Pct_change']][0]) )
-
-        recommended['5'] = ('Top % gainer:', clsym.rstrip(), '$'+str(clp), clname.rstrip(), '+%'+str(clupct) )
-        
-
-# Recommendeds ###############################################################
-        #  key    recomendation data     - (example output shown)
-        # =====================================================================
-        #   1:    Small cap % gainer: TXMD $0.818 TherapeuticsMD, Inc. +%7.12
-        #   2:    Unusual vol: SPRT $11.17 support.com, Inc. +%26.79
-        #   3:    Hottest: AUPH $17.93 Aurinia Pharmaceuticals I +%9.06
-        #   4:    Large cap: PHJMF $0.07 PT Hanjaya Mandala Sampoe +%9.2
-        #   5:    Top % gainer: SPRT $19.7 support.com, Inc. +%41.12
-        # todo: we should do a linear regression on the price curve for each item
-
-        print ( " " )
-        print ( f"============ recommendations >>Lowest buy price<< stocks with greatest % gain  =============" )
-        print ( " " )
-        for k, v in recommended.items():
-            print ( f"{k:3}: {v[0]:21} {v[1]:6} {v[3]:28} {v[2]:8} /  {v[4]}" )
-            print ( "--------------------------------------------------------------------------------------------" )
-
-# Summary ############### AVERGAES and computed info ##########################
-        print ( " " )
-        print ( "============== Market activity overview, inisghts & stats =================" )
-        avgs_prc = x.combo_grouped(2).round(2)       # insights
-        avgs_pct = x.combo_grouped(1).round(2)       # insights
-
-        print ( f"Price average over all stock movemnts" )
-        print ( f"{avgs_prc}" )
-        print ( " " )
-        print ( f"Percent  % average over all stock movemnts" )
-        print ( f"{avgs_pct}" )
-
-        #print ( f"Current day average $ gain: ${averages.iloc[-1]['Prc_change'].round(2)}" )
-        #print ( f"Current day percent gain:   %{averages.iloc[-1]['Pct_change'].round(2)}" )
 
 
 # Get the Bull/Bear Technical performance Sentiment for all stocks in combo DF ######################
