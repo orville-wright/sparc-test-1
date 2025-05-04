@@ -28,8 +28,8 @@ graph TD
 
     %% Key differences highlighted
     C2 -.->|Major Change: JS Rendering| Z1[Chromium Browser Instance]
-    D2 -.->|API Change: find() vs find_all()| Z2[Selector Syntax Updates]
-    E2 -.->|API Change: text vs stripped_strings| Z3[Text Extraction Updates]
+    D2 -.->|API Change: find vs find_all | Z2[Selector Syntax Updates]
+    E2 -.->|API Change: text vs stripped_strings | Z3[Text Extraction Updates]
 ```
 
 ## Component Descriptions
@@ -67,15 +67,15 @@ graph TD
 ```mermaid
 graph LR
     subgraph "BeautifulSoup API"
-        BS1[soup.find('tbody')] --> BS2[tag.find_all('tr')]
-        BS2 --> BS3[next(tag.stripped_strings)]
+        BS1[soup.find tbody ] --> BS2[tag.find_all tr]
+        BS2 --> BS3[next tag.stripped_strings ]
         BS3 --> BS4[tag.canvas]
     end
 
     subgraph "requests-html API"
-        RH1[r.html.find('tbody', first=True)] --> RH2[element.find('tr')]
+        RH1[r.html.find tbody', first=True ] --> RH2[element.find tr]
         RH2 --> RH3[element.text]
-        RH3 --> RH4[element.find('canvas', first=True)]
+        RH3 --> RH4[element.find canvas', first=True ]
     end
 ```
 
